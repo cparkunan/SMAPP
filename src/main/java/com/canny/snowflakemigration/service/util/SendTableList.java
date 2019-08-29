@@ -97,12 +97,14 @@ public class SendTableList  {
 			    tableLoadid = rs1.getInt(1);
 			    System.out.println("TableLoadId: "+ tableLoadid);
 			  	System.out.println("rs1 complete");
+			  	tableLoadid = tableLoadid + 1;
 		        ResultSet rs3 = st0.executeQuery("SELECT COALESCE(MAX(jobId),0) FROM sah_jobrunstatus");
 		        if((rs3.next()))
 		        {
 		         jobid = rs3.getInt(1);
 			     jobid = jobid + 1;
-			     st0.executeUpdate("INSERT INTO sah_jobrunstatus VALUES("+jobid+",now()::timestamp,NULL,NULL,"+processDTO.getId()+",'"+processDTO.getRunBy()+"',"+tablecount+",0,0);");               
+			     st0.executeUpdate("INSERT INTO sah_jobrunstatus VALUES("+jobid+","+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getRunBy()+"',"+"now()::timestamp,NULL,"+tablecount+",0,0,'IN PROGRESS');");               
+			    // st0.executeUpdate("INSERT INTO sah_jobrunstatus VALUES("+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getRunBy()+"',"+"now()::timestamp,NULL,"+tablecount+",0,0,'IN PROGRESS');");
                  String system = processDTO.getSourceConnectionName();
 		       	 while(i<tableNamescdc.length && tableNamescdc.length >0 && !tableNamescdc[i].equals("[]"))
 		         {
@@ -113,7 +115,8 @@ public class SendTableList  {
 					String key2 = key1.replaceAll("\"]|\"", "");
 					String col1  = cdcColumn[i].replace("[\"", "");
 					String col2 = col1.replaceAll("\"]|\"", "");
-		            st0.executeUpdate("INSERT INTO sah_tableLoadStatus VALUES("+jobid+","+tableLoadid+",'"+tableName+"',now()::timestamp,NULL,NULL,0,0,0,'cdc',"+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getSourceConnectionName()+"','"+processDTO.getSnowflakeConnectionName()+"');");
+		            st0.executeUpdate("INSERT INTO sah_tableLoadStatus VALUES("+tableLoadid+","+jobid+",'"+tableName+"',now()::timestamp,NULL,'IN PROGRESS',0,0,0,'cdc',"+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getSourceConnectionName()+"','"+processDTO.getSnowflakeConnectionName()+"');");
+					//st0.executeUpdate("INSERT INTO sah_tableLoadStatus VALUES('"+tableName+"',now()::timestamp,NULL,'IN PROGRESS',0,0,0,'cdc',"+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getSourceConnectionName()+"','"+processDTO.getSnowflakeConnectionName()+"');");
         	    	System.out.println("starting cdc delta process for the table: "+tableName);
 					cdcprocess(lastruntime,tableName,con1,con2,jobid,tableLoadid,processDTO.getId(),system,processDTO.getSourceConnectionDatabase(),key2,col2);
 				    st0.executeUpdate("UPDATE sah_tableLoadStatus SET tableLoadEndTime = now()::timestamp , tableLoadStatus = 'SUCCESS' WHERE tableLoadid = "+tableLoadid+" AND jobid = "+ jobid +";");
@@ -127,7 +130,8 @@ public class SendTableList  {
 					String tableName = tn.replaceAll("\"]|\"", "");
 					String bkey1  = pkbulk[j].replace("[\"", "");
 					String bkey2 = bkey1.replaceAll("\"]|\"", "");
-					st0.executeUpdate("INSERT INTO sah_tableLoadStatus VALUES("+jobid+","+tableLoadid+",'"+tableName+"',now()::timestamp,NULL,NULL,0,0,0,'bulk',"+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getSourceConnectionName()+"','"+processDTO.getSnowflakeConnectionName()+"');");
+					st0.executeUpdate("INSERT INTO sah_tableLoadStatus VALUES("+tableLoadid+","+jobid+",'"+tableName+"',now()::timestamp,NULL,'IN PROGRESS',0,0,0,'bulk',"+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getSourceConnectionName()+"','"+processDTO.getSnowflakeConnectionName()+"');");
+					//st0.executeUpdate("INSERT INTO sah_tableLoadStatus VALUES('"+tableName+"',now()::timestamp,NULL,'IN PROGRESS',0,0,0,'bulk',"+processDTO.getId()+",'"+processDTO.getName()+"','"+processDTO.getSourceConnectionName()+"','"+processDTO.getSnowflakeConnectionName()+"');");
         	    	System.out.println("starting bulk process for the table: "+tableName);
 					bulkprocess(tableName,con1,con2,jobid,tableLoadid,processDTO.getId(),system,processDTO.getSourceConnectionDatabase(),bkey2);
 				    st0.executeUpdate("UPDATE sah_tableLoadStatus SET tableLoadEndTime = now()::timestamp , tableLoadStatus = 'SUCCESS' WHERE tableLoadid = "+tableLoadid+" AND jobid = "+ jobid +";");
@@ -171,7 +175,7 @@ public class SendTableList  {
 			Statement st0 = con3.createStatement();
 			System.out.println("UPDATE sah_jobrunstatus SET JobEndTime = now()::timestamp , JobStatus = 'FAILURE--"+e.toString().replace("'", "")+"' WHERE jobid = (SELECT MAX(jobId) FROM sah_jobrunstatus);");
 			st0.executeUpdate("UPDATE sah_jobrunstatus SET JobEndTime = now()::timestamp , JobStatus = 'FAILURE--"+e.toString().replace("'", "")+"' WHERE jobid = (SELECT MAX(jobId) FROM sah_jobrunstatus);");
-			st0.executeUpdate("UPDATE sah_tableLoadStatus SET tableLoadEndTime = TO_TIMESTAMP_NTZ(CURRENT_TIMESTAMP) , tableLoadStatus = 'FAILURE' WHERE tableLoadid = (SELECT MAX(tableLoadId) FROM sah_tableLoadStatus);");
+			st0.executeUpdate("UPDATE sah_tableLoadStatus SET tableLoadEndTime = now()::timestamp, tableLoadStatus = 'FAILURE' WHERE tableLoadid = (SELECT MAX(tableLoadId) FROM sah_tableLoadStatus);");
 			status = "FAILURE - catch"+ e;
 			
 		}  
